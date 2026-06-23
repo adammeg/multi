@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+const tiktokVerificationFile =
+  process.env.TIKTOK_VERIFICATION_FILENAME ?? "tiktok-developers-site-verification.txt";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: [
@@ -14,6 +17,14 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "500mb",
     },
+  },
+  async rewrites() {
+    return [
+      {
+        source: `/${tiktokVerificationFile}`,
+        destination: "/api/tiktok-verification",
+      },
+    ];
   },
 };
 

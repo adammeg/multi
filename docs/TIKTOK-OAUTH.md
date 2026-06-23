@@ -36,6 +36,35 @@ https://multi-flame.vercel.app/api/oauth/tiktok/callback
 
 Must match **character for character** (https, no trailing slash unless you added one everywhere).
 
+### 4b. Verify domain ownership (URL properties)
+
+TikTok may require you to prove you own `multi-flame.vercel.app` before OAuth or video posting works.
+
+1. [developers.tiktok.com](https://developers.tiktok.com) → your app → **URL properties** → **Verify**
+2. Choose **Domain** (`multi-flame.vercel.app`) or **URL prefix** (`https://multi-flame.vercel.app/`)
+3. TikTok offers **DNS TXT record** or **signature file** — file is easiest for Vercel
+
+**Option A — file in `public/` (recommended)**
+
+1. Download the file TikTok gives you (often `tiktok-developers-site-verification.txt`)
+2. Save it to `public/tiktok-developers-site-verification.txt` in this repo (exact filename from TikTok)
+3. Commit, push, deploy
+4. Open `https://multi-flame.vercel.app/tiktok-developers-site-verification.txt` — you should see only the verification code
+5. Click **Verify** in TikTok portal
+
+**Option B — Vercel environment variables**
+
+In Vercel → Environment Variables:
+
+| Variable | Example |
+|----------|---------|
+| `TIKTOK_VERIFICATION_FILENAME` | `tiktok-developers-site-verification.txt` |
+| `TIKTOK_VERIFICATION_CONTENT` | paste the exact one-line code from TikTok |
+
+**Redeploy** after setting (rewrite uses filename at build time).
+
+See [TikTok URL verification docs](https://developers.tiktok.com/doc/getting-started-create-an-app).
+
 ### 5. Use Sandbox credentials in Vercel
 Sandbox and Production have **different** Client Key / Secret.
 
@@ -68,6 +97,7 @@ In the app, enable at least:
 | App in **Sandbox** mode | ☐ |
 | Your TikTok account in **Target users** | ☐ |
 | Redirect URI matches Vercel URL | ☐ |
+| **Domain verified** (URL properties) | ☐ |
 | **Sandbox** client key in Vercel (not Production) | ☐ |
 | Redeployed after env change | ☐ |
 

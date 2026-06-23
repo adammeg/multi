@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,15 @@ export function SettingsContent() {
     oauth_failed: "Connection failed. Check redirect URI and app credentials.",
     tiktok_sandbox:
       "TikTok Sandbox: add your TikTok account as a Target User in developers.tiktok.com → your app → Sandbox → Target users.",
+    tiktok_denied: "TikTok authorization was cancelled or denied.",
+    missing_code_or_state: "TikTok did not return an authorization code. Check your redirect URI.",
   };
+
+  const rawDetail = oauthErrorDetail;
+  const oauthErrorMessage =
+    rawDetail && !errorMessages[rawDetail]
+      ? decodeURIComponent(rawDetail)
+      : errorMessages[rawDetail ?? oauthError ?? ""] ?? errorMessages.oauth_failed;
 
   return (
     <div className="space-y-8">
@@ -65,7 +72,7 @@ export function SettingsContent() {
 
       {oauthError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {errorMessages[oauthErrorDetail ?? oauthError] ?? errorMessages.oauth_failed}
+          {oauthErrorMessage}
         </div>
       )}
 

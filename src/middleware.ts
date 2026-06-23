@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
     (p) => pathname === p || pathname.startsWith("/api/oauth/") || pathname.startsWith("/api/auth/")
   );
 
-  if (isPublic) return NextResponse.next();
+  if (isPublic || pathname === "/api/tiktok-verification") return NextResponse.next();
 
   const token = request.cookies.get("accessToken")?.value;
   const isApiRoute = pathname.startsWith("/api/");

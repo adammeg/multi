@@ -16,13 +16,22 @@ export async function checkPostLimit(userId: string): Promise<void> {
   }
 }
 
-export async function checkConnectedAccountLimit(userId: string): Promise<void> {
+export async function checkConnectedAccountLimit(
+  userId: string,
+  platform?: import("@/types").Platform
+): Promise<void> {
   const sub = await subscriptionRepository.findByUserId(userId);
   if (!sub) throw new AppError("Subscription not found", 404);
 
   const { connectedAccountRepository } = await import(
     "@/features/platforms/repositories/connected-account.repository"
   );
+
+  if (platform) {
+    const existing = await connectedAccountRepository.findByUserAndPlatform(userId, platform);
+    if (existing) return;
+  }
+
   const count = await connectedAccountRepository.countByUserId(userId);
 
   if (count >= sub.connectedAccountsLimit) {

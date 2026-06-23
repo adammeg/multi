@@ -33,7 +33,7 @@ export class OAuthService {
       platform: Platform;
     };
 
-    await checkConnectedAccountLimit(userId);
+    await checkConnectedAccountLimit(userId, platform);
 
     const tokens = await this.exchangeCode(platform, code);
     const profile = await this.fetchProfile(platform, tokens.access_token);
@@ -87,15 +87,42 @@ export class OAuthService {
 
     switch (platform) {
       case "tiktok": {
+        if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) {
+          throw new Error("TikTok credentials missing in server environment");
+        }
         const redirectUri = getOAuthRedirectUri("tiktok");
-        const res = await axios.post("https://open.tiktokapis.com/v2/oauth/token/", {
+        const body = new URLSearchParams({
           client_key: env.TIKTOK_CLIENT_KEY,
           client_secret: env.TIKTOK_CLIENT_SECRET,
           code,
           grant_type: "authorization_code",
           redirect_uri: redirectUri,
         });
-        return res.data;
+        const res = await axios.post(
+          "https://open.tiktokapis.com/v2/oauth/token/",
+          body.toString(),
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Cache-Control": "no-cache",
+            },
+          }
+        );
+        const data = res.data as {
+          access_token?: string;
+          refresh_token?: string;
+          expires_in?: number;
+          scope?: string;
+          error?: string;
+          error_description?: string;
+          message?: string;
+        };
+        if (!data.access_token) {
+          const detail =
+            data.error_description ?? data.message ?? data.error ?? "Token exchange failed";
+          throw new Error(`TikTok token error: ${detail}`);
+        }
+        return data;
       }
       case "instagram":
       case "facebook": {
@@ -134,10 +161,17 @@ export class OAuthService {
           headers: { Authorization: `Bearer ${accessToken}` },
           params: { fields: "open_id,display_name,avatar_url" },
         });
+        const apiError = res.data?.error;
+        if (apiError && apiError.code && apiError.code !== "ok") {
+          throw new Error(`TikTok profile error: ${apiError.message ?? apiError.code}`);
+        }
         const user = res.data?.data?.user;
+        if (!user?.open_id) {
+          throw new Error("TikTok profile error: missing user data");
+        }
         return {
           id: user.open_id,
-          username: user.display_name,
+          username: user.display_name ?? user.open_id,
           picture: user.avatar_url,
         };
       }
