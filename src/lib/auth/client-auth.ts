@@ -35,6 +35,13 @@ export async function getUploadAuthHeaders(): Promise<Record<string, string>> {
 export function formatBlobUploadError(error: unknown): string {
   const message = error instanceof Error ? error.message : "Upload failed";
 
+  if (message.includes("CORS") || message.includes("/api/blob/mpu") || message.includes("mpu")) {
+    return (
+      "Upload blocked by browser (multipart CORS). Redeploy the latest app version and retry. " +
+      "If the video is over ~100 MB, compress it before uploading."
+    );
+  }
+
   if (message.includes("client token") || message.includes("BLOB_NOT_CONFIGURED") || message.includes("503")) {
     return (
       "Video storage (Vercel Blob) is not set up — this is separate from MongoDB. " +

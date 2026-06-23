@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { usePlatforms } from "@/hooks/use-platforms";
 import { formatBytes, useUploadConfig } from "@/hooks/use-upload-config";
 import { formatBlobUploadError, getUploadAuthHeaders } from "@/lib/auth/client-auth";
+import { getVideoUploadMeta } from "@/lib/storage/video-upload";
 import type { Platform } from "@/types";
 
 function isLocalDevHost(): boolean {
@@ -63,11 +64,14 @@ export function NewPostForm() {
 
     setStatus("Uploading video...");
     try {
-      const blob = await upload(video.name, video, {
+      const { pathname, contentType } = getVideoUploadMeta(video);
+      const blob = await upload(pathname, video, {
         access: "public",
         handleUploadUrl: "/api/posts/upload",
         headers,
-        multipart: video.size > 20 * 1024 * 1024,
+        contentType,
+        // Multipart hits vercel.com/api/blob/mpu and fails CORS from custom domains.
+        multipart: false,
       });
 
       setStatus("Processing video...");
