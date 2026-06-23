@@ -35,11 +35,11 @@ export async function getUploadAuthHeaders(): Promise<Record<string, string>> {
 export function formatBlobUploadError(error: unknown): string {
   const message = error instanceof Error ? error.message : "Upload failed";
 
-  if (message.includes("client token")) {
+  if (message.includes("client token") || message.includes("BLOB_NOT_CONFIGURED") || message.includes("503")) {
     return (
-      "Video upload is not configured on the server. In Vercel: open your project → " +
-      "Storage → Create Blob store → connect it to this project → Redeploy. " +
-      "Then log out, log in again, and retry."
+      "Video storage (Vercel Blob) is not set up — this is separate from MongoDB. " +
+      "In Vercel: Storage → Create Blob → connect to multi-flame → Redeploy. " +
+      "Or use a video smaller than 4 MB until Blob is configured."
     );
   }
 

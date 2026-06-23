@@ -12,6 +12,10 @@ export function middleware(request: NextRequest) {
 
   if (isPublic || pathname === "/api/tiktok-verification") return NextResponse.next();
 
+  if (pathname === "/api/posts/upload" && request.method === "GET") {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get("accessToken")?.value;
   const isApiRoute = pathname.startsWith("/api/");
   const isDashboard = pathname.startsWith("/dashboard") || pathname.startsWith("/admin");

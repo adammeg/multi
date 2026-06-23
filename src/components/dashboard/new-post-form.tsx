@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuthStore } from "@/stores/auth.store";
 import { usePlatforms } from "@/hooks/use-platforms";
+import { formatBytes, useUploadConfig } from "@/hooks/use-upload-config";
 import { formatBlobUploadError, getUploadAuthHeaders } from "@/lib/auth/client-auth";
 import type { Platform } from "@/types";
 
@@ -29,17 +29,13 @@ export function NewPostForm() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const { accessToken } = useAuthStore();
   const router = useRouter();
   const { data: platformsData, isLoading: platformsLoading } = usePlatforms();
+  const { data: uploadConfig } = useUploadConfig();
 
   const allPlatforms = platformsData?.platforms ?? [];
   const connectedPlatforms = allPlatforms.filter((p) => p.connected);
   const connectedCount = platformsData?.connectedCount ?? 0;
-
-  const authHeaders: Record<string, string> = accessToken
-    ? { Authorization: `Bearer ${accessToken}` }
-    : {};
 
   const hasInitializedPlatforms = useRef(false);
 
@@ -102,6 +98,8 @@ export function NewPostForm() {
   async function createPostWithFormData() {
     if (!video) return;
 
+    const headers = await getUploadAuthHeaders();
+
     const formData = new FormData();
     formData.append("video", video);
     formData.append("caption", caption);
@@ -113,12 +111,39 @@ export function NewPostForm() {
     const res = await fetch("/api/posts", {
       method: "POST",
       credentials: "include",
-      headers: authHeaders,
+      headers,
       body: formData,
     });
 
     const json = await res.json();
     if (!json.success) throw new Error(json.error ?? "Failed to create post");
+  }
+
+  async function publishVideo() {
+    if (!video) return;
+
+    const maxDirect = uploadConfig?.maxDirectUploadBytes ?? 4 * 1024 * 1024;
+    const blobReady = uploadConfig?.blobConfigured ?? false;
+
+    if (isLocalDevHost()) {
+      await createPostWithFormData();
+      return;
+    }
+
+    if (blobReady) {
+      await createPostWithBlobUpload();
+      return;
+    }
+
+    if (video.size <= maxDirect) {
+      await createPostWithFormData();
+      return;
+    }
+
+    throw new Error(
+      `Video is ${formatBytes(video.size)} but Vercel Blob is not set up (max direct upload: ${formatBytes(maxDirect)}). ` +
+        "In Vercel: Storage → Create Blob → connect to your project → Redeploy."
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -136,11 +161,7 @@ export function NewPostForm() {
     setStatus("");
 
     try {
-      if (isLocalDevHost()) {
-        await createPostWithFormData();
-      } else {
-        await createPostWithBlobUpload();
-      }
+      await publishVideo();
       router.push("/dashboard/posts");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create post");
@@ -190,6 +211,17 @@ export function NewPostForm() {
         </div>
       </CardHeader>
       <CardContent>
+        {!isLocalDevHost() && uploadConfig && !uploadConfig.blobConfigured && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-medium">Vercel Blob not configured (503 on large uploads)</p>
+            <p className="mt-1 text-amber-800">
+              MongoDB stores your account data. Videos need separate{" "}
+              <strong>Vercel Blob</strong> storage. Go to Vercel → Storage → Create Blob →
+              connect to this project → Redeploy. Until then, only videos under{" "}
+              {formatBytes(uploadConfig.maxDirectUploadBytes)} can be uploaded.
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="video">Video (9:16, max 60s)</Label>
