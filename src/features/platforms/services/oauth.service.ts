@@ -43,7 +43,21 @@ export class OAuthService {
       profile.id
     );
 
-    if (!account) {
+    if (account) {
+      if (account.userId.toString() !== userId) {
+        throw new Error("This social account is already linked to another user");
+      }
+      const updated = await connectedAccountRepository.update(account._id.toString(), {
+        platformUsername: profile.username,
+        profilePicture: profile.picture,
+        accountType: profile.type,
+        isActive: true,
+        lastSyncedAt: new Date(),
+      });
+      if (!updated) throw new Error("Failed to update connected account");
+      account = updated;
+    } else {
+      await connectedAccountRepository.deactivateByUserAndPlatform(userId, platform);
       account = await connectedAccountRepository.create({
         userId: userId as unknown as import("mongoose").Types.ObjectId,
         platform,

@@ -2,6 +2,21 @@ import { ConnectedAccount, IConnectedAccount, OAuthToken, IOAuthToken } from "@/
 import type { Platform } from "@/types";
 
 export class ConnectedAccountRepository {
+  async findByUserAndPlatform(
+    userId: string,
+    platform: Platform
+  ): Promise<IConnectedAccount | null> {
+    return ConnectedAccount.findOne({ userId, platform, isActive: true });
+  }
+
+  async update(id: string, data: Partial<IConnectedAccount>): Promise<IConnectedAccount | null> {
+    return ConnectedAccount.findByIdAndUpdate(id, data, { new: true });
+  }
+
+  async deactivateByUserAndPlatform(userId: string, platform: Platform): Promise<void> {
+    await ConnectedAccount.updateMany({ userId, platform, isActive: true }, { isActive: false });
+  }
+
   async create(data: Partial<IConnectedAccount>): Promise<IConnectedAccount> {
     return ConnectedAccount.create(data);
   }

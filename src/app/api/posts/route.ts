@@ -2,9 +2,11 @@ import { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { withAuth } from "@/lib/middleware/auth.middleware";
 import { postService } from "@/features/posts/services/post.service";
-import { createPostSchema } from "@/features/posts/dto/post.dto";
+import { createPostJsonSchema, createPostSchema } from "@/features/posts/dto/post.dto";
 import { handleApiError, successResponse, withRateLimit } from "@/lib/utils/api-handler";
 import { AppError, errorResponse } from "@/lib/utils/api-response";
+
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,8 +26,41 @@ export async function POST(request: NextRequest) {
     const { user } = await withAuth(request);
 
     const contentType = request.headers.get("content-type") ?? "";
+
+    if (contentType.includes("application/json")) {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        throw new AppError("Invalid JSON body", 400);
+      }
+
+      let dto;
+      try {
+        dto = createPostJsonSchema.parse(body);
+      } catch (err) {
+        if (err instanceof ZodError) {
+          const message = err.issues.map((i) => i.message).join("; ");
+          return errorResponse(message, 400, { code: "VALIDATION_ERROR" });
+        }
+        throw err;
+      }
+
+      const { videoUrl, videoFilename, ...postDto } = dto;
+      const post = await postService.createPostFromUrl(
+        user.userId,
+        postDto,
+        videoUrl,
+        videoFilename
+      );
+      return successResponse(post, 201);
+    }
+
     if (!contentType.includes("multipart/form-data")) {
-      throw new AppError("Content-Type must be multipart/form-data", 400);
+      throw new AppError(
+        "Content-Type must be application/json or multipart/form-data",
+        400
+      );
     }
 
     let formData: FormData;
@@ -33,7 +68,7 @@ export async function POST(request: NextRequest) {
       formData = await request.formData();
     } catch {
       throw new AppError(
-        "Failed to read upload. Video may exceed the size limit — try a smaller file.",
+        "Failed to read upload. On Vercel, videos must use direct upload — redeploy with Blob storage enabled.",
         400,
         "INVALID_FORM_DATA"
       );

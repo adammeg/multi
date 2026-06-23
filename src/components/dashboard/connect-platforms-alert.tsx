@@ -2,37 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowRight, X } from "lucide-react";
 import { useState } from "react";
-import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-async function fetchPlatforms(token: string | null) {
-  const res = await fetch("/api/platforms", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const json = await res.json();
-  return json.data ?? [];
-}
+import { usePlatforms } from "@/hooks/use-platforms";
 
 export function ConnectPlatformsAlert() {
   const pathname = usePathname();
-  const { accessToken } = useAuthStore();
   const [dismissed, setDismissed] = useState(false);
+  const { data, isLoading } = usePlatforms();
 
-  const { data: platforms = [], isLoading } = useQuery({
-    queryKey: ["platforms"],
-    queryFn: () => fetchPlatforms(accessToken),
-  });
+  const connectedCount = data?.connectedCount ?? 0;
+  const totalCount = data?.totalCount ?? 4;
+  const hasConnectedPlatform = connectedCount > 0;
+  const allConnected = connectedCount >= totalCount;
 
   const isSettingsPage = pathname.startsWith("/dashboard/settings");
-  const hasConnectedPlatform = platforms.some(
-    (p: { connected: boolean }) => p.connected
-  );
 
-  if (isLoading || hasConnectedPlatform || isSettingsPage || dismissed) {
+  if (isLoading || allConnected || isSettingsPage || dismissed) {
     return null;
   }
 
@@ -48,16 +36,20 @@ export function ConnectPlatformsAlert() {
         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 sm:mt-0" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-amber-900">
-            Connect your social accounts to start publishing
+            {hasConnectedPlatform
+              ? `${connectedCount} of ${totalCount} platforms connected`
+              : "Connect your social accounts to start publishing"}
           </p>
           <p className="text-sm text-amber-700">
-            Link TikTok, Instagram, Facebook, or YouTube before creating your first post.
+            {hasConnectedPlatform
+              ? "Connect more platforms in Settings to publish everywhere, or post only to connected ones."
+              : "Link TikTok, Instagram, Facebook, or YouTube before creating your first post."}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" asChild>
             <Link href="/dashboard/settings">
-              Connect now
+              {hasConnectedPlatform ? "Connect more" : "Connect now"}
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>

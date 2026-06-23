@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useUIStore } from "@/stores/auth.store";
+import { usePlatforms } from "@/hooks/use-platforms";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -31,6 +32,9 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const { user, logout } = useAuthStore();
+  const { data: platformsData } = usePlatforms();
+  const connectedCount = platformsData?.connectedCount ?? 0;
+  const totalCount = platformsData?.totalCount ?? 4;
 
   return (
     <>
@@ -75,6 +79,18 @@ export function DashboardSidebar() {
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
+                {item.href === "/dashboard/settings" && (
+                  <span
+                    className={cn(
+                      "ml-auto rounded-full px-2 py-0.5 text-xs font-medium",
+                      connectedCount > 0
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-amber-100 text-amber-700"
+                    )}
+                  >
+                    {connectedCount}/{totalCount}
+                  </span>
+                )}
               </Link>
             );
           })}

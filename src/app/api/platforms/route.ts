@@ -16,13 +16,26 @@ export async function GET(request: NextRequest) {
     const { user } = await withAuth(request);
     const connected = await connectedAccountRepository.findByUserId(user.userId);
 
-    const platforms = PLATFORMS.map((p) => ({
-      ...p,
-      connected: connected.some((c) => c.platform === p.id),
-      account: connected.find((c) => c.platform === p.id) ?? null,
-    }));
+    const platforms = PLATFORMS.map((p) => {
+      const account = connected.find((c) => c.platform === p.id);
+      return {
+        ...p,
+        connected: !!account,
+        account: account
+          ? {
+              platformUsername: account.platformUsername,
+              profilePicture: account.profilePicture,
+              connectedAt: account.createdAt,
+            }
+          : null,
+      };
+    });
 
-    return successResponse(platforms);
+    return successResponse({
+      platforms,
+      connectedCount: connected.length,
+      totalCount: PLATFORMS.length,
+    });
   } catch (error) {
     return handleApiError(error);
   }

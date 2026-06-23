@@ -25,5 +25,11 @@ export const schedulePostSchema = z.object({
     ),
 });
 
+export const createPostJsonSchema = createPostSchema.extend({
+  videoUrl: z.string().url().refine((u) => u.startsWith("https://"), "Video URL must be HTTPS"),
+  videoFilename: z.string().min(1).max(255),
+});
+
 export type CreatePostDto = z.infer<typeof createPostSchema>;
+export type CreatePostJsonDto = z.infer<typeof createPostJsonSchema>;
 export type SchedulePostDto = z.infer<typeof schedulePostSchema>;

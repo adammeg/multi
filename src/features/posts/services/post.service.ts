@@ -3,6 +3,7 @@ import { subscriptionRepository } from "@/features/subscription/repositories/sub
 import { activityLogRepository } from "@/features/analytics/repositories/analytics.repository";
 import { videoService } from "@/features/posts/services/video.service";
 import { publishingService } from "@/features/platforms/services/publishing.service";
+import { connectedAccountRepository } from "@/features/platforms/repositories/connected-account.repository";
 import { getStorage } from "@/lib/storage/adapter";
 import { AppError } from "@/lib/utils/api-response";
 import { checkPostLimit } from "@/lib/middleware/subscription.middleware";
@@ -11,6 +12,23 @@ import type { Platform, PostStatus } from "@/types";
 import { getPublishQueue } from "@/lib/queue/publish.queue";
 
 export class PostService {
+  async createPostFromUrl(
+    userId: string,
+    dto: CreatePostDto,
+    videoUrl: string,
+    filename: string
+  ) {
+    const response = await fetch(videoUrl);
+    if (!response.ok) {
+      throw new AppError("Failed to fetch uploaded video", 400, "VIDEO_FETCH_FAILED");
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) {
+      throw new AppError("Uploaded video is empty", 400, "VIDEO_EMPTY");
+    }
+    return this.createPost(userId, dto, buffer, filename);
+  }
+
   async createPost(
     userId: string,
     dto: CreatePostDto,
@@ -18,6 +36,7 @@ export class PostService {
     filename: string
   ) {
     await checkPostLimit(userId);
+    await this.assertPlatformsConnected(userId, dto.platforms);
 
     const storage = getStorage();
     const videoPath = await storage.save(videoBuffer, filename);
@@ -85,6 +104,19 @@ export class PostService {
     });
 
     return post;
+  }
+
+  private async assertPlatformsConnected(userId: string, platforms: Platform[]) {
+    const connected = await connectedAccountRepository.findByUserId(userId);
+    const connectedIds = new Set(connected.map((c) => c.platform));
+    const missing = platforms.filter((p) => !connectedIds.has(p));
+    if (missing.length > 0) {
+      throw new AppError(
+        `Connect these platforms in Settings before publishing: ${missing.join(", ")}`,
+        400,
+        "PLATFORMS_NOT_CONNECTED"
+      );
+    }
   }
 
   async processPublish(postId: string) {
