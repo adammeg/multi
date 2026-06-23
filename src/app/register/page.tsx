@@ -3,7 +3,7 @@ import { RegisterForm } from "@/components/auth/auth-forms";
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <RegisterForm />
       <p className="mt-4 text-sm text-slate-600">
         Already have an account?{" "}

@@ -86,16 +86,28 @@ When you add `multiposter.tn`:
 2. Update all redirect URIs in developer portals  
 3. Redeploy
 
-## 5. Video uploads (Vercel Blob)
+## 5. Video uploads (Vercel Blob) — required for publishing
 
-Vercel serverless functions reject request bodies over **~4.5 MB** (`FUNCTION_PAYLOAD_TOO_LARGE`). Video uploads bypass that limit via **direct client → Vercel Blob** upload.
+Vercel serverless functions reject request bodies over **~4.5 MB** (`FUNCTION_PAYLOAD_TOO_LARGE`). Video uploads use **direct client → Vercel Blob** upload.
 
-1. In Vercel: **Storage → Create → Blob** (link to this project).
-2. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically — no manual copy needed.
-3. Redeploy after linking the Blob store.
-4. On production, the **New Post** form uploads the file straight to Blob, then sends only the URL to `/api/posts`.
+If you see **`Vercel Blob: Failed to retrieve the client token`**, the Blob store is not linked yet.
 
-Local dev still uses normal multipart upload to `/api/posts` (no Blob required).
+### Setup (one time)
+
+1. Open [vercel.com](https://vercel.com) → your project **multi-flame**
+2. Go to **Storage** tab → **Create Database / Store** → choose **Blob**
+3. Name it (e.g. `multiposter-videos`) → **Connect to project** → select **multi-flame**
+4. Confirm `BLOB_READ_WRITE_TOKEN` appears under **Settings → Environment Variables**
+5. **Deployments → Redeploy** (required — env vars load on deploy)
+6. Log out and log back in on the site, then try **New Post** again
+
+### How it works
+
+1. Browser asks `/api/posts/upload` for a short-lived upload token
+2. Video uploads directly to Vercel Blob (bypasses 4.5 MB limit)
+3. `/api/posts` receives only the Blob URL + post metadata
+
+Local dev (`localhost`) still uses normal multipart upload — no Blob needed locally.
 
 ## Limitations on Vercel
 

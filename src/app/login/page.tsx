@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/auth/auth-forms";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <LoginForm />
       <p className="mt-4 text-sm text-slate-600">
         Don&apos;t have an account?{" "}

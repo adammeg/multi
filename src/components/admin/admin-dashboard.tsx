@@ -31,10 +31,10 @@ export function AdminDashboard() {
   });
 
   return (
-    <div className="space-y-8 p-6">
-      <h1 className="text-2xl font-bold">Admin Panel</h1>
+    <div className="space-y-6 p-4 sm:space-y-8 sm:p-6">
+      <h1 className="text-xl font-bold sm:text-2xl">Admin Panel</h1>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <Card>
           <CardHeader><CardTitle>Total Users</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold">{overview?.totalUsers ?? 0}</p></CardContent>
@@ -54,9 +54,9 @@ export function AdminDashboard() {
         <CardContent>
           <div className="space-y-2">
             {users?.users?.map((u: { _id: string; name: string; email: string }) => (
-              <div key={u._id} className="flex justify-between text-sm">
-                <span>{u.name}</span>
-                <span className="text-slate-500">{u.email}</span>
+              <div key={u._id} className="flex flex-col gap-0.5 text-sm sm:flex-row sm:justify-between">
+                <span className="font-medium">{u.name}</span>
+                <span className="truncate text-slate-500">{u.email}</span>
               </div>
             ))}
           </div>

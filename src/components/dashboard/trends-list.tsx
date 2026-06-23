@@ -19,13 +19,13 @@ export function TrendsList() {
   if (isLoading) return <div className="text-slate-500">Loading trends...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Trends</h1>
-        <p className="text-slate-500">Discover what&apos;s trending in Tunisia.</p>
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Trends</h1>
+        <p className="text-sm text-slate-500 sm:text-base">Discover what&apos;s trending in Tunisia.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {trends.map(
           (trend: {
             _id: string;
@@ -36,7 +36,7 @@ export function TrendsList() {
           }) => (
             <Card key={trend._id}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle className="text-base">{trend.name}</CardTitle>
                   <Badge variant="success">+{Math.round(trend.growthPercent)}%</Badge>
                 </div>

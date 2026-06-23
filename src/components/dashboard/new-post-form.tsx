@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth.store";
 import { usePlatforms } from "@/hooks/use-platforms";
+import { formatBlobUploadError, getUploadAuthHeaders } from "@/lib/auth/client-auth";
 import type { Platform } from "@/types";
 
 function isLocalDevHost(): boolean {
@@ -59,33 +60,43 @@ export function NewPostForm() {
   async function createPostWithBlobUpload() {
     if (!video) return;
 
+    const headers = await getUploadAuthHeaders();
+    if (!headers.Authorization) {
+      throw new Error("Your session expired. Log out, log in again, then retry the upload.");
+    }
+
     setStatus("Uploading video...");
-    const blob = await upload(video.name, video, {
-      access: "public",
-      handleUploadUrl: "/api/posts/upload",
-      headers: authHeaders,
-    });
+    try {
+      const blob = await upload(video.name, video, {
+        access: "public",
+        handleUploadUrl: "/api/posts/upload",
+        headers,
+        multipart: video.size > 20 * 1024 * 1024,
+      });
 
-    setStatus("Processing video...");
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders,
-      },
-      body: JSON.stringify({
-        caption,
-        hashtags: hashtags.split(/\s+/).filter(Boolean),
-        platforms,
-        scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
-        videoUrl: blob.url,
-        videoFilename: video.name,
-      }),
-    });
+      setStatus("Processing video...");
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({
+          caption,
+          hashtags: hashtags.split(/\s+/).filter(Boolean),
+          platforms,
+          scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+          videoUrl: blob.url,
+          videoFilename: video.name,
+        }),
+      });
 
-    const json = await res.json();
-    if (!json.success) throw new Error(json.error ?? "Failed to create post");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? "Failed to create post");
+    } catch (err) {
+      throw new Error(formatBlobUploadError(err));
+    }
   }
 
   async function createPostWithFormData() {
@@ -171,8 +182,8 @@ export function NewPostForm() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>Create New Post</CardTitle>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <CardTitle className="text-lg sm:text-xl">Create New Post</CardTitle>
           <Badge variant="success">
             {connectedCount} platform{connectedCount !== 1 ? "s" : ""} connected
           </Badge>
@@ -263,7 +274,7 @@ export function NewPostForm() {
           {error && <p className="text-sm text-red-600">{error}</p>}
           {status && <p className="text-sm text-slate-600">{status}</p>}
 
-          <Button type="submit" disabled={loading || platforms.length === 0}>
+          <Button type="submit" disabled={loading || platforms.length === 0} className="w-full sm:w-auto">
             {loading ? status || "Working..." : scheduledFor ? "Schedule Post" : "Publish Now"}
           </Button>
         </form>

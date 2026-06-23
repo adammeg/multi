@@ -29,7 +29,7 @@ export const resetPasswordSchema = z.object({
 });
 
 export const refreshTokenSchema = z.object({
-  refreshToken: z.string(),
+  refreshToken: z.string().optional(),
 });
 
 export type RegisterDto = z.infer<typeof registerSchema>;

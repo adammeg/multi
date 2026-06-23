@@ -27,15 +27,16 @@ export function ConnectPlatformsAlert() {
   return (
     <div
       className={cn(
-        "sticky top-0 z-30 -mx-6 -mt-6 mb-6 border-b border-amber-200 bg-amber-50 px-4 py-3",
-        "lg:-mx-0 lg:mt-0 lg:mb-6 lg:rounded-lg lg:border lg:top-4"
+        "sticky top-12 z-20 -mx-4 mb-4 border border-amber-200 bg-amber-50 px-3 py-3 sm:-mx-6 sm:mb-6 sm:px-4",
+        "lg:static lg:mx-0 lg:mb-6 lg:rounded-lg lg:top-auto"
       )}
       role="alert"
     >
-      <div className="mx-auto flex max-w-7xl items-start gap-3 sm:items-center">
-        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 sm:mt-0" />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-amber-900">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3 lg:items-center">
+        <div className="flex gap-3 sm:flex-1 sm:items-start lg:items-center">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-amber-900">
             {hasConnectedPlatform
               ? `${connectedCount} of ${totalCount} platforms connected`
               : "Connect your social accounts to start publishing"}
@@ -45,9 +46,10 @@ export function ConnectPlatformsAlert() {
               ? "Connect more platforms in Settings to publish everywhere, or post only to connected ones."
               : "Link TikTok, Instagram, Facebook, or YouTube before creating your first post."}
           </p>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" asChild>
+        <div className="flex shrink-0 items-center gap-2 pl-8 sm:pl-0">
+          <Button size="sm" asChild className="flex-1 sm:flex-none">
             <Link href="/dashboard/settings">
               {hasConnectedPlatform ? "Connect more" : "Connect now"}
               <ArrowRight className="ml-1 h-4 w-4" />

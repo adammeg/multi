@@ -35,13 +35,13 @@ export function DashboardContent() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500">Post once, publish everywhere.</p>
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Dashboard</h1>
+        <p className="text-sm text-slate-500 sm:text-base">Post once, publish everywhere.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard title="Total Views" value={stats.totalViews.toLocaleString()} icon={Eye} />
         <StatCard title="Total Posts" value={stats.totalPosts} icon={FileVideo} />
         <StatCard
@@ -65,8 +65,8 @@ export function DashboardContent() {
             <div className="space-y-3">
               {stats.platformBreakdown.map(
                 (p: { _id: string; totalViews: number; totalEngagement: number }) => (
-                  <div key={p._id} className="flex items-center justify-between">
-                    <Badge variant="outline" className="capitalize">
+                  <div key={p._id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Badge variant="outline" className="w-fit capitalize">
                       {p._id}
                     </Badge>
                     <span className="text-sm text-slate-600">

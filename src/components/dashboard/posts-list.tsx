@@ -31,10 +31,10 @@ export function PostsList() {
   if (isLoading) return <div className="text-slate-500">Loading posts...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Posts</h1>
-        <p className="text-slate-500">View and manage your published content.</p>
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Posts</h1>
+        <p className="text-sm text-slate-500 sm:text-base">View and manage your published content.</p>
       </div>
 
       <div className="grid gap-4">
@@ -48,26 +48,39 @@ export function PostsList() {
             thumbnailPath?: string;
           }) => (
             <Card key={post._id}>
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-16 w-12 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
-                  9:16
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="truncate font-medium text-slate-900">
-                    {post.caption || "Untitled post"}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {new Date(post.createdAt).toLocaleDateString()}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {post.platforms?.map((p: string) => (
-                      <Badge key={p} variant="outline" className="capitalize text-xs">
-                        {p}
-                      </Badge>
-                    ))}
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center gap-3 sm:contents">
+                  <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                    9:16
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-900">
+                      {post.caption || "Untitled post"}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {new Date(post.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={statusVariant[post.status] ?? "outline"}
+                    className="shrink-0 self-start sm:hidden"
+                  >
+                    {post.status}
+                  </Badge>
                 </div>
-                <Badge variant={statusVariant[post.status] ?? "outline"}>{post.status}</Badge>
+                <div className="flex flex-wrap gap-1 sm:flex-1">
+                  {post.platforms?.map((p: string) => (
+                    <Badge key={p} variant="outline" className="capitalize text-xs">
+                      {p}
+                    </Badge>
+                  ))}
+                </div>
+                <Badge
+                  variant={statusVariant[post.status] ?? "outline"}
+                  className="hidden shrink-0 sm:inline-flex"
+                >
+                  {post.status}
+                </Badge>
               </CardContent>
             </Card>
           )

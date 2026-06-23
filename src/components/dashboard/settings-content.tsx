@@ -52,11 +52,11 @@ export function SettingsContent() {
       : errorMessages[rawDetail ?? oauthError ?? ""] ?? errorMessages.oauth_failed;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-          <p className="text-slate-500">Manage your connected social accounts.</p>
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Settings</h1>
+          <p className="text-sm text-slate-500 sm:text-base">Manage your connected social accounts.</p>
         </div>
         <Badge variant={connectedCount > 0 ? "success" : "outline"} className="text-sm px-3 py-1">
           {connectedCount} of {totalCount} connected
@@ -104,9 +104,9 @@ export function SettingsContent() {
           {platforms.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between rounded-lg border border-slate-200 p-4"
+              className="flex flex-col gap-4 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 {p.connected && p.account?.profilePicture && (
                   <img
                     src={p.account.profilePicture}
@@ -124,13 +124,14 @@ export function SettingsContent() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
                 <Badge variant={p.connected ? "success" : "outline"}>
                   {p.connected ? "Connected" : "Not connected"}
                 </Badge>
                 <Button
                   size="sm"
                   variant={p.connected ? "outline" : "default"}
+                  className="w-full sm:w-auto"
                   onClick={() => connectPlatform(p.id, accessToken)}
                 >
                   {p.connected ? "Reconnect" : "Connect"}

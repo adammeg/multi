@@ -52,20 +52,21 @@ export function AnalyticsCharts() {
     ) ?? [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-        <p className="text-slate-500">Track performance across all platforms.</p>
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Analytics</h1>
+        <p className="text-sm text-slate-500 sm:text-base">Track performance across all platforms.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Views Over Time</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={viewsData}>
+          <CardContent className="overflow-x-auto">
+            <div className="min-w-[280px]">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={viewsData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
@@ -73,6 +74,7 @@ export function AnalyticsCharts() {
                 <Line type="monotone" dataKey="views" stroke="#7c3aed" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
@@ -80,9 +82,10 @@ export function AnalyticsCharts() {
           <CardHeader>
             <CardTitle>Engagement Over Time</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={engagementData}>
+          <CardContent className="overflow-x-auto">
+            <div className="min-w-[280px]">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={engagementData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
@@ -90,6 +93,7 @@ export function AnalyticsCharts() {
                 <Line type="monotone" dataKey="engagement" stroke="#10b981" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
@@ -97,9 +101,10 @@ export function AnalyticsCharts() {
           <CardHeader>
             <CardTitle>Platform Comparison</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={platformData}>
+          <CardContent className="overflow-x-auto">
+            <div className="min-w-[300px]">
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={platformData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="platform" />
                 <YAxis />
@@ -109,6 +114,7 @@ export function AnalyticsCharts() {
                 <Bar dataKey="engagement" fill="#10b981" />
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
