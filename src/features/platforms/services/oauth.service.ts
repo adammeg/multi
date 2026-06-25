@@ -53,6 +53,7 @@ export class OAuthService {
         accountType: profile.type,
         isActive: true,
         lastSyncedAt: new Date(),
+        metadata: profile.metadata ?? account.metadata,
       });
       if (!updated) throw new Error("Failed to update connected account");
       account = updated;
@@ -67,6 +68,7 @@ export class OAuthService {
         accountType: profile.type,
         isActive: true,
         lastSyncedAt: new Date(),
+        metadata: profile.metadata,
       });
     }
 
@@ -154,7 +156,13 @@ export class OAuthService {
   private async fetchProfile(
     platform: Platform,
     accessToken: string
-  ): Promise<{ id: string; username: string; picture?: string; type?: string }> {
+  ): Promise<{
+    id: string;
+    username: string;
+    picture?: string;
+    type?: string;
+    metadata?: Record<string, unknown>;
+  }> {
     switch (platform) {
       case "tiktok": {
         const res = await axios.get("https://open.tiktokapis.com/v2/user/info/", {
@@ -177,10 +185,7 @@ export class OAuthService {
       }
       case "instagram":
       case "facebook": {
-        const res = await axios.get("https://graph.facebook.com/v18.0/me", {
-          params: { fields: "id,name,picture", access_token: accessToken },
-        });
-        return { id: res.data.id, username: res.data.name, picture: res.data.picture?.data?.url };
+        return this.fetchMetaProfile(platform, accessToken);
       }
       case "youtube": {
         const res = await axios.get(
@@ -195,9 +200,58 @@ export class OAuthService {
           id: channel?.id ?? "unknown",
           username: channel?.snippet?.title ?? "YouTube Channel",
           picture: channel?.snippet?.thumbnails?.default?.url,
+          metadata: { channelId: channel?.id },
         };
       }
     }
+  }
+
+  private async fetchMetaProfile(platform: Platform, accessToken: string) {
+    const pagesRes = await axios.get("https://graph.facebook.com/v18.0/me/accounts", {
+      params: {
+        fields: "id,name,access_token,instagram_business_account,picture",
+        access_token: accessToken,
+      },
+    });
+
+    const page = pagesRes.data?.data?.[0] as
+      | {
+          id: string;
+          name: string;
+          instagram_business_account?: { id: string };
+          picture?: { data?: { url?: string } };
+        }
+      | undefined;
+
+    if (platform === "instagram" && page?.instagram_business_account?.id) {
+      return {
+        id: page.instagram_business_account.id,
+        username: page.name,
+        picture: page.picture?.data?.url,
+        type: "instagram_business",
+        metadata: { igUserId: page.instagram_business_account.id, pageId: page.id },
+      };
+    }
+
+    if (platform === "facebook" && page?.id) {
+      return {
+        id: page.id,
+        username: page.name,
+        picture: page.picture?.data?.url,
+        type: "facebook_page",
+        metadata: { pageId: page.id },
+      };
+    }
+
+    const res = await axios.get("https://graph.facebook.com/v18.0/me", {
+      params: { fields: "id,name,picture", access_token: accessToken },
+    });
+    return {
+      id: res.data.id,
+      username: res.data.name,
+      picture: res.data.picture?.data?.url,
+      metadata: platform === "instagram" ? { igUserId: res.data.id } : { pageId: res.data.id },
+    };
   }
 
   async refreshExpiringTokens() {

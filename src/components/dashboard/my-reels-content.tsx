@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import {
   RefreshCw,
   Sparkles,
@@ -10,12 +11,21 @@ import {
   MessageCircle,
   ExternalLink,
   Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth.store";
+import { usePlatforms } from "@/hooks/use-platforms";
 import type { Platform } from "@/types";
+
+type SyncResult = {
+  platform: string;
+  username: string;
+  count: number;
+  error?: string;
+};
 
 async function fetchWithAuth(url: string, token: string | null, options?: RequestInit) {
   const res = await fetch(url, {
@@ -40,6 +50,8 @@ function viralScoreColor(score: number) {
 export function MyReelsContent() {
   const { accessToken } = useAuthStore();
   const queryClient = useQueryClient();
+  const { data: platformsData } = usePlatforms();
+  const connectedCount = platformsData?.connectedCount ?? 0;
 
   const { data: contentData, isLoading } = useQuery({
     queryKey: ["my-reels"],
@@ -57,10 +69,16 @@ export function MyReelsContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-reels"] });
       queryClient.invalidateQueries({ queryKey: ["content-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-views"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-engagement"] });
+      queryClient.invalidateQueries({ queryKey: ["platforms"] });
     },
   });
 
   const videos = contentData?.videos ?? [];
+  const syncResults = (syncMutation.data as { results?: SyncResult[] } | undefined)?.results ?? [];
+  const syncFailures = syncResults.filter((r) => r.error && r.count === 0);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -68,12 +86,12 @@ export function MyReelsContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My Reels</h1>
           <p className="text-slate-500">
-            Sync videos from connected accounts and get viral growth recommendations.
+            Real videos and stats from your connected accounts.
           </p>
         </div>
         <Button
           onClick={() => syncMutation.mutate()}
-          disabled={syncMutation.isPending}
+          disabled={syncMutation.isPending || connectedCount === 0}
           className="w-full sm:w-auto"
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />
@@ -81,10 +99,44 @@ export function MyReelsContent() {
         </Button>
       </div>
 
+      {connectedCount === 0 && (
+        <Card className="border-violet-200 bg-violet-50/40">
+          <CardContent className="py-8 text-center">
+            <p className="text-slate-700">Connect a platform in Settings to sync your videos.</p>
+            <Button className="mt-4" asChild>
+              <Link href="/dashboard/settings">Go to Settings</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {syncMutation.isSuccess && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {(syncMutation.data as { message?: string })?.message}
         </div>
+      )}
+
+      {syncMutation.isError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {syncMutation.error instanceof Error ? syncMutation.error.message : "Sync failed"}
+        </div>
+      )}
+
+      {syncFailures.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="py-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-900">
+              <AlertCircle className="h-4 w-4" />
+              Some accounts could not be synced
+            </div>
+            {syncFailures.map((r) => (
+              <p key={r.platform} className="text-sm text-amber-800">
+                <span className="capitalize font-medium">{r.platform}</span> (@{r.username}):{" "}
+                {r.error}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {/* Recommendations panel */}
@@ -98,7 +150,7 @@ export function MyReelsContent() {
         <CardContent>
           {analysisLoading ? (
             <p className="text-sm text-slate-500">Analyzing your content...</p>
-          ) : analysis ? (
+          ) : analysis && analysis.totalVideos > 0 ? (
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-lg bg-white p-4 border border-slate-100">
@@ -184,7 +236,12 @@ export function MyReelsContent() {
                 </div>
               )}
             </div>
-          ) : null}
+          ) : (
+            <p className="text-sm text-slate-600">
+              Sync your accounts to get personalized viral growth recommendations based on your real
+              content.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -198,12 +255,24 @@ export function MyReelsContent() {
             <CardContent className="py-12 text-center">
               <p className="text-slate-500">No videos synced yet.</p>
               <p className="mt-1 text-sm text-slate-400">
-                Connect accounts in Settings, then click &quot;Sync from accounts&quot;.
+                Connect accounts in Settings, then tap &quot;Sync from accounts&quot; to pull your
+                real videos.
               </p>
+              {connectedCount > 0 && (
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  disabled={syncMutation.isPending}
+                  onClick={() => syncMutation.mutate()}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Sync now
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             {videos.map(
               (video: {
                 _id: string;
@@ -216,15 +285,24 @@ export function MyReelsContent() {
                 engagementRate?: number;
                 publishedAt: string;
                 permalink?: string;
+                thumbnailUrl?: string;
                 analysis?: { strengths: string[]; weaknesses: string[]; recommendations: string[] };
                 hashtags: string[];
               }) => (
                 <Card key={video._id}>
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                      <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
-                        9:16
-                      </div>
+                      {video.thumbnailUrl ? (
+                        <img
+                          src={video.thumbnailUrl}
+                          alt=""
+                          className="h-28 w-20 shrink-0 rounded-lg object-cover bg-slate-100"
+                        />
+                      ) : (
+                        <div className="flex h-28 w-20 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                          9:16
+                        </div>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-medium text-slate-900 truncate">{video.title}</h3>

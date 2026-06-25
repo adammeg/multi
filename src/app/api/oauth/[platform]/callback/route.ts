@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withDb } from "@/lib/middleware/auth.middleware";
 import { oauthService } from "@/features/platforms/services/oauth.service";
+import { contentSyncService } from "@/features/content/services/content-sync.service";
 import { getAppBaseUrl } from "@/lib/config/oauth-urls";
 import type { Platform } from "@/types";
 
@@ -13,14 +14,18 @@ export async function GET(
   { params }: { params: Promise<{ platform: string }> }
 ) {
   const { platform } = await params;
-  const tiktokError = request.nextUrl.searchParams.get("error");
-  const tiktokErrorDesc = request.nextUrl.searchParams.get("error_description");
+  const oauthError = request.nextUrl.searchParams.get("error");
+  const oauthErrorDesc = request.nextUrl.searchParams.get("error_description");
 
-  if (tiktokError) {
-    const detail =
-      tiktokError === "access_denied"
-        ? "tiktok_denied"
-        : encodeURIComponent(tiktokErrorDesc ?? tiktokError);
+  if (oauthError) {
+    let detail: string;
+    if (oauthError === "access_denied") {
+      if (platform === "youtube") detail = "youtube_access_denied";
+      else if (platform === "tiktok") detail = "tiktok_denied";
+      else detail = encodeURIComponent(oauthErrorDesc ?? oauthError);
+    } else {
+      detail = encodeURIComponent(oauthErrorDesc ?? oauthError);
+    }
     return settingsRedirect(`error=oauth_failed&error_detail=${detail}`);
   }
 
@@ -33,8 +38,13 @@ export async function GET(
 
   try {
     await withDb();
-    await oauthService.handleCallback(platform as Platform, code, state);
-    return settingsRedirect(`connected=${platform}`);
+    const account = await oauthService.handleCallback(platform as Platform, code, state);
+    try {
+      await contentSyncService.syncUserContent(account.userId.toString());
+    } catch (syncErr) {
+      console.error(`[oauth/${platform}/callback] post-connect sync failed`, syncErr);
+    }
+    return settingsRedirect(`connected=${platform}&synced=1`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown_error";
     console.error(`[oauth/${platform}/callback]`, message);

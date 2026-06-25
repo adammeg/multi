@@ -26,14 +26,21 @@ export function SettingsContent() {
   const platforms = data?.platforms ?? [];
   const connectedCount = data?.connectedCount ?? 0;
   const totalCount = data?.totalCount ?? 4;
+  const plan = data?.plan ?? "FREE";
+  const accountLimit = data?.connectedAccountsLimit ?? 1;
 
   const oauthError = searchParams.get("error");
   const oauthErrorDetail = searchParams.get("error_detail");
   const connectedPlatform = searchParams.get("connected");
+  const justSynced = searchParams.get("synced") === "1";
 
   useEffect(() => {
     if (connectedPlatform || oauthError) {
       queryClient.invalidateQueries({ queryKey: ["platforms"] });
+      queryClient.invalidateQueries({ queryKey: ["my-reels"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-views"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-engagement"] });
     }
   }, [searchParams, queryClient, connectedPlatform, oauthError]);
 
@@ -42,7 +49,9 @@ export function SettingsContent() {
     tiktok_sandbox:
       "TikTok Sandbox: add your TikTok account as a Target User in developers.tiktok.com → your app → Sandbox → Target users.",
     tiktok_denied: "TikTok authorization was cancelled or denied.",
-    missing_code_or_state: "TikTok did not return an authorization code. Check your redirect URI.",
+    youtube_access_denied:
+      "Google blocked access (403). Your Google account must be added as a Test user in Google Cloud → OAuth consent screen → Test users. Enable YouTube Data API v3 and use the same Gmail you add as test user.",
+    missing_code_or_state: "OAuth did not return an authorization code. Check your redirect URI.",
   };
 
   const rawDetail = oauthErrorDetail;
@@ -59,14 +68,17 @@ export function SettingsContent() {
           <p className="text-sm text-slate-500 sm:text-base">Manage your connected social accounts.</p>
         </div>
         <Badge variant={connectedCount > 0 ? "success" : "outline"} className="text-sm px-3 py-1">
-          {connectedCount} of {totalCount} connected
+          {connectedCount} of {accountLimit} connected · {plan} plan
         </Badge>
       </div>
 
       {connectedPlatform && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {connectedPlatform.charAt(0).toUpperCase() + connectedPlatform.slice(1)} connected
-          successfully. You can now publish to this platform.
+          successfully.
+          {justSynced
+            ? " Your videos and stats were synced automatically."
+            : " Sync your content from My Reels or the Dashboard."}
         </div>
       )}
 
@@ -75,6 +87,28 @@ export function SettingsContent() {
           {oauthErrorMessage}
         </div>
       )}
+
+      <Card className="border-blue-200 bg-blue-50/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base text-blue-900">YouTube / Google OAuth (403 access_denied)</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-blue-900 space-y-2">
+          <p>
+            If Google shows <strong>403 access_denied</strong>, add your Gmail under{" "}
+            <strong>Google Cloud → OAuth consent screen → Test users</strong>.
+          </p>
+          <ol className="list-decimal list-inside space-y-1 text-blue-800">
+            <li>Enable <strong>YouTube Data API v3</strong></li>
+            <li>Add scopes: <code className="text-xs">youtube.upload</code>, <code className="text-xs">youtube.readonly</code></li>
+            <li>Add your Gmail as a <strong>Test user</strong></li>
+            <li>Redirect URI: <code className="text-xs">https://multi-flame.vercel.app/api/oauth/youtube/callback</code></li>
+            <li>Use the same Gmail when connecting in Settings</li>
+          </ol>
+          <p className="text-blue-800">
+            Full guide: Google Cloud Console → OAuth consent screen → Test users.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="border-amber-200 bg-amber-50/50">
         <CardHeader className="pb-2">
@@ -120,6 +154,12 @@ export function SettingsContent() {
                   {p.connected && p.account && (
                     <div className="text-sm text-emerald-600 mt-1">
                       Connected as @{p.account.platformUsername}
+                      {p.account.lastSyncedAt && (
+                        <span className="block text-xs text-slate-500 mt-0.5">
+                          Last synced:{" "}
+                          {new Date(p.account.lastSyncedAt).toLocaleString()}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

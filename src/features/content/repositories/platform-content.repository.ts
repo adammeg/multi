@@ -33,7 +33,10 @@ export class PlatformContentRepository {
     platform?: Platform,
     limit = 50
   ): Promise<IPlatformContent[]> {
-    const filter: Record<string, unknown> = { userId };
+    const filter: Record<string, unknown> = {
+      userId,
+      externalId: { $not: /^demo_/ },
+    };
     if (platform) filter.platform = platform;
     return PlatformContent.find(filter)
       .sort({ publishedAt: -1 })
@@ -77,16 +80,59 @@ export class PlatformContentRepository {
 
   async getStatsByUser(userId: string) {
     return PlatformContent.aggregate([
-      { $match: { userId: userId as unknown as import("mongoose").Types.ObjectId } },
+      { $match: { userId: userId as unknown as import("mongoose").Types.ObjectId, externalId: { $not: /^demo_/ } } },
       {
         $group: {
           _id: "$platform",
           videoCount: { $sum: 1 },
           totalViews: { $sum: "$views" },
+          totalEngagement: {
+            $sum: { $add: ["$likes", "$comments", "$shares", "$saves"] },
+          },
           avgEngagement: { $avg: "$engagementRate" },
           avgViralScore: { $avg: "$viralScore" },
         },
       },
+    ]);
+  }
+
+  async getUserTotals(userId: string) {
+    const [result] = await PlatformContent.aggregate([
+      { $match: { userId: userId as unknown as import("mongoose").Types.ObjectId, externalId: { $not: /^demo_/ } } },
+      {
+        $group: {
+          _id: null,
+          totalViews: { $sum: "$views" },
+          totalEngagement: {
+            $sum: { $add: ["$likes", "$comments", "$shares", "$saves"] },
+          },
+          videoCount: { $sum: 1 },
+        },
+      },
+    ]);
+    return result ?? { totalViews: 0, totalEngagement: 0, videoCount: 0 };
+  }
+
+  async getMetricsOverTime(userId: string, days = 30) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    return PlatformContent.aggregate([
+      {
+        $match: {
+          userId: userId as unknown as import("mongoose").Types.ObjectId,
+          publishedAt: { $gte: since },
+          externalId: { $not: /^demo_/ },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
+          views: { $sum: "$views" },
+          engagement: {
+            $sum: { $add: ["$likes", "$comments", "$shares", "$saves"] },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
     ]);
   }
 }

@@ -10,13 +10,34 @@ export class ContentSyncService {
     const accounts = await connectedAccountRepository.findByUserId(userId);
 
     if (accounts.length === 0) {
-      return { synced: 0, accounts: 0, message: "No connected accounts. Connect platforms in Settings." };
+      return {
+        synced: 0,
+        accounts: 0,
+        results: [],
+        message: "No connected accounts. Connect platforms in Settings.",
+      };
     }
 
     let totalSynced = 0;
+    const results: {
+      platform: string;
+      username: string;
+      count: number;
+      error?: string;
+    }[] = [];
 
     for (const account of accounts) {
-      const videos = await platformContentFetcher.fetchWithAccount(account);
+      const { videos, error } = await platformContentFetcher.fetchWithAccount(account);
+
+      if (error && videos.length === 0) {
+        results.push({
+          platform: account.platform,
+          username: account.platformUsername,
+          count: 0,
+          error,
+        });
+        continue;
+      }
 
       const items = videos.map((v: PlatformVideoItem) => ({
         externalId: v.externalId,
@@ -47,14 +68,31 @@ export class ContentSyncService {
       });
 
       totalSynced += items.length;
+      results.push({
+        platform: account.platform,
+        username: account.platformUsername,
+        count: items.length,
+        error: error && items.length > 0 ? error : undefined,
+      });
     }
 
-    await contentAnalysisService.analyzeAllUserContent(userId);
+    if (totalSynced > 0) {
+      await contentAnalysisService.analyzeAllUserContent(userId);
+    }
+
+    const failed = results.filter((r) => r.count === 0 && r.error);
+    const message =
+      totalSynced > 0
+        ? `Synced ${totalSynced} video(s) from ${accounts.length} account(s)`
+        : failed.length > 0
+          ? `Sync failed: ${failed.map((f) => f.error).join("; ")}`
+          : "No videos found on connected accounts";
 
     return {
       synced: totalSynced,
       accounts: accounts.length,
-      message: `Synced ${totalSynced} videos from ${accounts.length} account(s)`,
+      results,
+      message,
     };
   }
 

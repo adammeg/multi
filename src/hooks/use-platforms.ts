@@ -13,6 +13,7 @@ export type PlatformInfo = {
     platformUsername: string;
     profilePicture?: string;
     connectedAt?: string;
+    lastSyncedAt?: string;
   } | null;
 };
 
@@ -20,6 +21,10 @@ export type PlatformsData = {
   platforms: PlatformInfo[];
   connectedCount: number;
   totalCount: number;
+  plan?: string;
+  connectedAccountsLimit?: number;
+  postsLimit?: number;
+  postsUsedThisMonth?: number;
 };
 
 async function fetchPlatforms(token: string | null): Promise<PlatformsData> {
