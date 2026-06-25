@@ -80,6 +80,11 @@ function formatChartDate(date: string) {
   return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function formatTooltipNumber(value: unknown): string {
+  const n = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(n) ? n.toLocaleString() : String(value ?? "");
+}
+
 function ChartEmptyState({ message }: { message: string }) {
   return (
     <div className="flex h-[240px] flex-col items-center justify-center text-center px-4">
@@ -266,7 +271,7 @@ export function AnalyticsCharts() {
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip
-                      formatter={(value: number) => [value.toLocaleString(), "Views"]}
+                      formatter={(value) => [formatTooltipNumber(value), "Views"]}
                       labelFormatter={(_, payload) =>
                         payload?.[0]?.payload?.date
                           ? formatChartDate(String(payload[0].payload.date))
@@ -297,9 +302,7 @@ export function AnalyticsCharts() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      formatter={(value: number) => [value.toLocaleString(), "Engagement"]}
-                    />
+                    <Tooltip formatter={(value) => [formatTooltipNumber(value), "Engagement"]} />
                     <Line type="monotone" dataKey="engagement" stroke="#10b981" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -324,7 +327,7 @@ export function AnalyticsCharts() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="platform" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                    <Tooltip formatter={(value) => formatTooltipNumber(value)} />
                     <Legend />
                     <Bar dataKey="views" name="Views" fill="#7c3aed" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="engagement" name="Engagement" fill="#10b981" radius={[4, 4, 0, 0]} />
