@@ -113,16 +113,30 @@ export class PlatformContentRepository {
     return result ?? { totalViews: 0, totalEngagement: 0, videoCount: 0 };
   }
 
-  async getMetricsOverTime(userId: string, days = 30) {
+  async getMetricsOverTime(userId: string, days = 90) {
+    const userOid = userId as unknown as import("mongoose").Types.ObjectId;
+    const baseMatch = {
+      userId: userOid,
+      externalId: { $not: /^demo_/ },
+    };
+
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const recent = await this.aggregateMetricsByDate({
+      ...baseMatch,
+      publishedAt: { $gte: since },
+    });
+
+    if (recent.length > 0) return recent;
+
+    const allTime = await this.aggregateMetricsByDate(baseMatch);
+    if (allTime.length <= 60) return allTime;
+
+    return this.aggregateMetricsByMonth(baseMatch);
+  }
+
+  private aggregateMetricsByDate(match: Record<string, unknown>) {
     return PlatformContent.aggregate([
-      {
-        $match: {
-          userId: userId as unknown as import("mongoose").Types.ObjectId,
-          publishedAt: { $gte: since },
-          externalId: { $not: /^demo_/ },
-        },
-      },
+      { $match: match },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
@@ -133,6 +147,54 @@ export class PlatformContentRepository {
         },
       },
       { $sort: { _id: 1 } },
+    ]);
+  }
+
+  private aggregateMetricsByMonth(match: Record<string, unknown>) {
+    return PlatformContent.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$publishedAt" } },
+          views: { $sum: "$views" },
+          engagement: {
+            $sum: { $add: ["$likes", "$comments", "$shares", "$saves"] },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+  }
+
+  async getTopVideos(userId: string, limit = 5) {
+    return PlatformContent.find({
+      userId: userId as unknown as import("mongoose").Types.ObjectId,
+      externalId: { $not: /^demo_/ },
+    })
+      .sort({ views: -1 })
+      .limit(limit)
+      .select("title platform views likes comments engagementRate thumbnailUrl permalink publishedAt");
+  }
+
+  async aggregateHashtagTrends(limit = 15) {
+    return PlatformContent.aggregate([
+      {
+        $match: {
+          externalId: { $not: /^demo_/ },
+          hashtags: { $exists: true, $ne: [] },
+        },
+      },
+      { $unwind: "$hashtags" },
+      {
+        $group: {
+          _id: "$hashtags",
+          count: { $sum: 1 },
+          totalViews: { $sum: "$views" },
+          platforms: { $addToSet: "$platform" },
+        },
+      },
+      { $sort: { totalViews: -1, count: -1 } },
+      { $limit: limit },
     ]);
   }
 }

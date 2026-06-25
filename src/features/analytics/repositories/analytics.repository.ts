@@ -65,6 +65,15 @@ export class TrendRepository {
   async findByCategory(category: TrendCategory, country = "TN"): Promise<ITrend[]> {
     return Trend.find({ category, country }).sort({ growthPercent: -1 }).limit(20);
   }
+
+  async getLastFetchedAt(country = "TN"): Promise<Date | null> {
+    const latest = await Trend.findOne({ country }).sort({ fetchedAt: -1 }).select("fetchedAt");
+    return latest?.fetchedAt ?? null;
+  }
+
+  async countByCountry(country = "TN"): Promise<number> {
+    return Trend.countDocuments({ country });
+  }
 }
 
 export class ActivityLogRepository {

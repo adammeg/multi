@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { user } = await withAuth(request);
     const type = request.nextUrl.searchParams.get("type") ?? "dashboard";
-    const days = parseInt(request.nextUrl.searchParams.get("days") ?? "30", 10);
+    const days = parseInt(request.nextUrl.searchParams.get("days") ?? "90", 10);
 
     switch (type) {
       case "views":

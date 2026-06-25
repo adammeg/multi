@@ -17,7 +17,7 @@ export class PlatformContentFetcher {
       case "facebook":
         return this.fetchFacebookReels(accessToken, account);
       case "youtube":
-        return this.fetchYouTubeShorts(accessToken);
+        return this.fetchYouTubeVideos(accessToken, account);
       default:
         return [];
     }
@@ -41,12 +41,29 @@ export class PlatformContentFetcher {
       const videos = await this.fetchVideos(account, token);
       return { videos };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "API request failed";
+      const message = this.formatApiError(err, account.platform);
       return {
         videos: [],
         error: `${account.platform}: ${message}`,
       };
     }
+  }
+
+  private formatApiError(err: unknown, platform: Platform): string {
+    if (axios.isAxiosError(err)) {
+      const data = err.response?.data as
+        | { error?: { message?: string; errors?: { reason?: string; message?: string }[] } }
+        | undefined;
+      const apiMessage = data?.error?.message;
+      const reason = data?.error?.errors?.[0]?.reason;
+      if (apiMessage) {
+        return reason ? `${apiMessage} (${reason})` : apiMessage;
+      }
+      if (err.response?.status === 401) {
+        return "Access token expired — reconnect this platform in Settings.";
+      }
+    }
+    return err instanceof Error ? err.message : "API request failed";
   }
 
   private async fetchTikTokVideos(accessToken: string): Promise<PlatformVideoItem[]> {
@@ -154,22 +171,41 @@ export class PlatformContentFetcher {
     }));
   }
 
-  private async fetchYouTubeShorts(accessToken: string): Promise<PlatformVideoItem[]> {
-    const searchRes = await axios.get("https://www.googleapis.com/youtube/v3/search", {
+  private async fetchYouTubeVideos(
+    accessToken: string,
+    account: IConnectedAccount
+  ): Promise<PlatformVideoItem[]> {
+    const channelId = (account.metadata?.channelId as string) ?? account.platformUserId;
+
+    const channelRes = await axios.get("https://www.googleapis.com/youtube/v3/channels", {
       params: {
-        part: "snippet",
-        forMine: true,
-        type: "video",
-        videoDuration: "short",
-        maxResults: 20,
-        order: "date",
+        part: "contentDetails",
+        ...(channelId && channelId !== "unknown" ? { id: channelId } : { mine: true }),
       },
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    const videoIds = (searchRes.data?.items ?? [])
-      .map((i: { id: { videoId: string } }) => i.id.videoId)
-      .filter(Boolean);
+    const channel = channelRes.data?.items?.[0] as
+      | { contentDetails?: { relatedPlaylists?: { uploads?: string } } }
+      | undefined;
+    const uploadsPlaylistId = channel?.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploadsPlaylistId) return [];
+
+    const playlistRes = await axios.get(
+      "https://www.googleapis.com/youtube/v3/playlistItems",
+      {
+        params: {
+          part: "contentDetails",
+          playlistId: uploadsPlaylistId,
+          maxResults: 50,
+        },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    const videoIds = (playlistRes.data?.items ?? [])
+      .map((item: { contentDetails?: { videoId?: string } }) => item.contentDetails?.videoId)
+      .filter((id: string | undefined): id is string => Boolean(id));
 
     if (videoIds.length === 0) return [];
 
@@ -181,31 +217,41 @@ export class PlatformContentFetcher {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    return (statsRes.data?.items ?? []).map((v: Record<string, unknown>) => {
-      const snippet = v.snippet as {
-        title?: string;
-        description?: string;
-        publishedAt?: string;
-        thumbnails?: { medium?: { url?: string } };
-      };
-      const stats = v.statistics as Record<string, string>;
-      const details = v.contentDetails as { duration?: string };
-      return {
-        externalId: String(v.id),
-        title: snippet?.title ?? "",
-        caption: snippet?.description ?? "",
-        thumbnailUrl: snippet?.thumbnails?.medium?.url ?? "",
-        permalink: `https://youtube.com/shorts/${v.id}`,
-        duration: this.parseIsoDuration(details?.duration ?? "PT0S"),
-        publishedAt: new Date(snippet?.publishedAt ?? Date.now()),
-        views: parseInt(stats?.viewCount ?? "0", 10),
-        likes: parseInt(stats?.likeCount ?? "0", 10),
-        comments: parseInt(stats?.commentCount ?? "0", 10),
-        shares: 0,
-        saves: 0,
-        hashtags: this.extractHashtags(snippet?.description ?? ""),
-      };
-    });
+    return (statsRes.data?.items ?? [])
+      .map((v: Record<string, unknown>) => {
+        const snippet = v.snippet as {
+          title?: string;
+          description?: string;
+          publishedAt?: string;
+          thumbnails?: { medium?: { url?: string } };
+        };
+        const stats = v.statistics as Record<string, string>;
+        const details = v.contentDetails as { duration?: string };
+        const duration = this.parseIsoDuration(details?.duration ?? "PT0S");
+        const isShort = duration > 0 && duration <= 180;
+
+        return {
+          externalId: String(v.id),
+          title: snippet?.title ?? "",
+          caption: snippet?.description ?? "",
+          thumbnailUrl: snippet?.thumbnails?.medium?.url ?? "",
+          permalink: isShort
+            ? `https://youtube.com/shorts/${v.id}`
+            : `https://youtube.com/watch?v=${v.id}`,
+          duration,
+          publishedAt: new Date(snippet?.publishedAt ?? Date.now()),
+          views: parseInt(stats?.viewCount ?? "0", 10),
+          likes: parseInt(stats?.likeCount ?? "0", 10),
+          comments: parseInt(stats?.commentCount ?? "0", 10),
+          shares: 0,
+          saves: 0,
+          hashtags: this.extractHashtags(snippet?.description ?? ""),
+        };
+      })
+      .sort(
+        (a: PlatformVideoItem, b: PlatformVideoItem) =>
+          b.publishedAt.getTime() - a.publishedAt.getTime()
+      );
   }
 
   private extractHashtags(text: string): string[] {

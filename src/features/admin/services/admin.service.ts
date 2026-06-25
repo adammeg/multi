@@ -54,13 +54,14 @@ export class AdminService {
 
 export class AnalyticsService {
   async getDashboardStats(userId: string) {
-    const [analyticsTotals, contentTotals, platformData, postCount, connectedCount] =
+    const [analyticsTotals, contentTotals, platformData, postCount, connectedCount, topVideos] =
       await Promise.all([
         analyticsRepository.getTotals(userId),
         platformContentRepository.getUserTotals(userId),
         platformContentRepository.getStatsByUser(userId),
         postRepository.countByUser(userId),
         connectedAccountRepository.countByUserId(userId),
+        platformContentRepository.getTopVideos(userId, 5),
       ]);
 
     const totalViews =
@@ -92,6 +93,17 @@ export class AnalyticsService {
       engagementRate,
       connectedPlatforms: connectedCount,
       platformBreakdown,
+      topVideos: topVideos.map((v) => ({
+        title: v.title,
+        platform: v.platform,
+        views: v.views,
+        likes: v.likes,
+        comments: v.comments,
+        engagementRate: v.engagementRate,
+        thumbnailUrl: v.thumbnailUrl,
+        permalink: v.permalink,
+        publishedAt: v.publishedAt,
+      })),
       dataSource: contentTotals.videoCount > 0 ? "synced_accounts" : "none",
     };
   }

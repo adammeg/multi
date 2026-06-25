@@ -70,6 +70,7 @@ export function MyReelsContent() {
       queryClient.invalidateQueries({ queryKey: ["my-reels"] });
       queryClient.invalidateQueries({ queryKey: ["content-recommendations"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["analytics-views"] });
       queryClient.invalidateQueries({ queryKey: ["analytics-engagement"] });
       queryClient.invalidateQueries({ queryKey: ["platforms"] });

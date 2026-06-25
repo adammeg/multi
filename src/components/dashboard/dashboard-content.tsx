@@ -53,6 +53,7 @@ export function DashboardContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["my-reels"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["analytics-views"] });
       queryClient.invalidateQueries({ queryKey: ["analytics-engagement"] });
       queryClient.invalidateQueries({ queryKey: ["platforms"] });
